@@ -14,8 +14,8 @@ load_dotenv()
 
 
 PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
-TELEGRAM_TOKEN = None  # os.getenv('asd')
-TELEGRAM_CHAT_ID = None
+TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
+TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
 RETRY_PERIOD = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
@@ -69,7 +69,7 @@ def get_api_answer(timestamp):
     )
     if response.ok:
         return response.json()
-
+    return 'no data'
 # pp(get_api_answer(int(time.time())))
 
 
@@ -81,18 +81,30 @@ def write_in_json():
 # Функция check_response() проверяет ответ API на соответствие документации
 # из урока API сервиса Практикум.Домашка.
 # В качестве параметра функция получает ответ API, приведенный к типам данных Python.
-# def check_response(response):
-#     ...
+def check_response(response):
+    ...
 
 # # !-----------------------------
 # # Функция parse_status() извлекает из информации о конкретной домашней работе статус этой работы.
 # # В качестве параметра функция получает только один элемент из списка домашних работ.
 # # В случае успеха, функция возвращает подготовленную для отправки в Telegram строку,
 # # содержащую один из вердиктов словаря HOMEWORK_VERDICTS.
-# def parse_status(homework):
-#     ...
+# * HOMEWORK_VERDICTS = {
+# *     'approved': 'Работа проверена: ревьюеру всё понравилось. Ура!',
+# *     'reviewing': 'Работа взята на проверку ревьюером.',
+# *     'rejected': 'Работа проверена: у ревьюера есть замечания.'
+# * }
 
-#     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
+
+def last_status(homework):
+    return homework.get('status')
+
+
+def parse_status(homework):
+    status = homework.get('status')
+    homework_name = homework.get('homework_name')
+    verdict = HOMEWORK_VERDICTS.get(status)
+    return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
 def main():
@@ -100,12 +112,12 @@ def main():
 
     ...
 
-    # bot = telegram.Bot(token=TELEGRAM_TOKEN)
-    timestamp = int(time.time())
-    get_api_answer(timestamp)
-    return get_api_answer(timestamp)  # ! ----------
+    bot = telegram.Bot(token=TELEGRAM_TOKEN)
+    timestamp = int(time.time()) - RETRY_PERIOD
+    return get_api_answer(RETRY_PERIOD)
     # send_message(bot)
-
+    # homework = 'asd'
+    # status = last_status(homework)
     ...
 
     # while True:
@@ -121,5 +133,4 @@ def main():
 
 if __name__ == '__main__':
     # main()
-    print(main())
-    pass
+    pp(main())
