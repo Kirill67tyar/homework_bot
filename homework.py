@@ -1,6 +1,5 @@
 import sys
 import time
-import json
 import logging
 
 import requests
@@ -33,10 +32,9 @@ logger.addHandler(handler)
 
 def check_tokens():
     """
-    Проверка на наличие токенов:
-    PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID.
+    Проверка на наличие токенов.
+    Токены: PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID.
     """
-
     try:
         assert PRACTICUM_TOKEN, 'PRACTICUM_TOKEN'
         assert TELEGRAM_TOKEN, 'TELEGRAM_TOKEN'
@@ -86,11 +84,6 @@ def get_api_answer(timestamp):
     raise TypeError('Ошибка при отправке.')
 
 
-def write_in_json():
-    with open('resp.json', 'w', encoding='utf-8') as f:
-        json.dump(get_api_answer(0), f, ensure_ascii=False)
-
-
 def check_response(response):
     """
     Функция валидатор данных для парсинга.
@@ -107,12 +100,10 @@ def check_response(response):
     return response['homeworks']
 
 
-
-
 def parse_status(homework):
     """
-    Функция подготавливает сообщения для отправки в чат,
-    или вызывает TypeError если есть ошибки.
+    Функция подготавливает сообщения для отправки в чат.
+    Или вызывает TypeError если есть ошибки.
     """
     try:
         new_status = homework['status']
@@ -125,7 +116,6 @@ def parse_status(homework):
 
 def main():
     """Основная логика работы бота."""
-
     check_tokens()
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time())
