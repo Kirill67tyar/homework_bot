@@ -54,7 +54,10 @@ def check_tokens():
 def send_message(bot, message):
     """Функция для отправки сообщения в телеграм."""
     logger.debug(
-        msg='Начало отправки сообщения в чат телеграма'
+        msg=(
+            f'Начало отправки сообщения "{message}" '
+            f'в чат телеграма {TELEGRAM_CHAT_ID}'
+        )
     )
     try:
         bot.send_message(
@@ -62,13 +65,17 @@ def send_message(bot, message):
             text=message,
         )
         logger.debug(
-            msg='Сообщение успешно отправлено в чат телеграма'
+            msg=(
+                f'Сообщение "{message}" '
+                f'успешно отправлено в чат телеграма {TELEGRAM_CHAT_ID}'
+            )
         )
     except telegram.TelegramError as err:
         logger.error(
             msg=(
-                'Ошибка при отправке сообщения'
-                f'о состояния проекта в чат телеграма: {err}'
+                f'Ошибка при отправке сообщения "{message}"'
+                'о состоянии проекта, в чат телеграма'
+                f'{TELEGRAM_CHAT_ID}: {err}'
             )
         )
 
