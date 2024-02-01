@@ -1,3 +1,4 @@
+import sys
 import time
 import logging
 from http import HTTPStatus
@@ -6,15 +7,23 @@ import requests
 import telegram
 
 from config import (
-    ENDPOINT, HANDLER, HEADERS, HOMEWORK_VERDICTS,
+    ENDPOINT, HEADERS, HOMEWORK_VERDICTS,
     PRACTICUM_TOKEN, RETRY_PERIOD, TELEGRAM_CHAT_ID,
-    TELEGRAM_TOKEN,
+    TELEGRAM_TOKEN, LOGGING_FORMAT,
 )
 
 
+handler = logging.StreamHandler(
+    stream=sys.stdout
+)
+formatter = logging.Formatter(
+    LOGGING_FORMAT
+)
+handler.setFormatter(formatter)
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-logger.addHandler(HANDLER)
+logger.addHandler(handler)
 
 
 def check_tokens():
@@ -36,7 +45,7 @@ def check_tokens():
             f'Токены: \'{output_for_error}\' '
             'из окружения переменных не загрузились.'
         )
-        logging.critical(
+        logger.critical(
             msg=msg
         )
         raise SystemExit(msg)
@@ -44,7 +53,7 @@ def check_tokens():
 
 def send_message(bot, message):
     """Функция для отправки сообщения в телеграм."""
-    logging.debug(
+    logger.debug(
         msg='Начало отправки сообщения в чат телеграма'
     )
     try:
@@ -52,11 +61,11 @@ def send_message(bot, message):
             chat_id=TELEGRAM_CHAT_ID,
             text=message,
         )
-        logging.debug(
+        logger.debug(
             msg='Сообщение успешно отправлено в чат телеграма'
         )
     except telegram.TelegramError as err:
-        logging.error(
+        logger.error(
             msg=(
                 'Ошибка при отправке сообщения'
                 f'о состояния проекта в чат телеграма: {err}'
@@ -86,7 +95,7 @@ def get_api_answer(timestamp):
         'from_date': timestamp,
     }
     try:
-        logging.debug(
+        logger.debug(
             msg=output_logging_for_http_request(
                 main_msg='Начало GET запроса',
                 params=params
@@ -102,29 +111,23 @@ def get_api_answer(timestamp):
             output_logging_for_http_request(
                 main_msg=(
                     'Ошибка при запросе,'
-                    f'статус код {response.status_code}'
+                    f'статус код {response.reason}'
                 ),
                 params=params)
         )
-    if response.status_code == HTTPStatus.OK:
-        logging.debug(
-            msg=output_logging_for_http_request(
-                main_msg='Запрос успешно выполнен',
-                params=params
-            )
+    if response.status_code != HTTPStatus.OK:
+        raise ValueError(
+            output_logging_for_http_request(
+                main_msg=f'Ошибка при запросе, статус код {response.reason}',
+                params=params)
         )
-        return response.json()
-    logging.error(
+    logger.debug(
         msg=output_logging_for_http_request(
-            main_msg=f'Ошибка при запросе, статус код {response.status_code}',
+            main_msg='Запрос успешно выполнен',
             params=params
         )
     )
-    raise ValueError(
-        output_logging_for_http_request(
-            main_msg=f'Ошибка при запросе, статус код {response.status_code}',
-            params=params)
-    )
+    return response.json()
 
 
 def check_response(response):
@@ -134,7 +137,7 @@ def check_response(response):
     что в это словаре есть ключ homeworks;
     что значением ключа homewirks будет список.
     """
-    logging.debug(
+    logger.debug(
         msg='Начало выполнения функции check_response для валидации данных.'
     )
     if not isinstance(response, dict):
@@ -142,15 +145,18 @@ def check_response(response):
             ('Данные должны быть приобразованы из json в словарь.'
              f'Пришёл тип данных {type(response)}.')
         )
-    if ('homeworks' or 'current_date') not in response:
+    if 'current_date' not in response:
         raise KeyError(
-            'В словаре response должен быть ключ homeworks/current_date.')
+            'В словаре response должен быть ключ current_date.')
+    if 'homeworks' not in response:
+        raise KeyError(
+            'В словаре response должен быть ключ homeworks.')
     if not isinstance(response['homeworks'], list):
         raise TypeError(
             ('Значением \'homeworks\' должен быть список.'
              f'Пришёл тип данных {type(response["homeworks"])}.')
         )
-    logging.debug(
+    logger.debug(
         msg='Данные в функции check_response успешно провалидированы.'
     )
     return response['homeworks']
@@ -161,18 +167,18 @@ def parse_status(homework):
     Функция подготавливает сообщения для отправки в чат.
     Или вызывает TypeError если есть ошибки.
     """
-    logging.debug(
+    logger.debug(
         'Начало выполнения функции parse_status для парсинга данных.')
     if 'homework_name' not in homework:
-        raise TypeError('В homework нет ключа \'homework_name\'.')
+        raise KeyError('В homework нет ключа \'homework_name\'.')
     if 'status' not in homework:
-        raise TypeError('В homework нет ключа \'status\'.')
+        raise KeyError('В homework нет ключа \'status\'.')
     new_status = homework['status']
     if new_status not in HOMEWORK_VERDICTS:
-        raise TypeError(f'В HOMEWORK_VERDICTS нет ключа \'{new_status}\'.')
+        raise KeyError(f'В HOMEWORK_VERDICTS нет ключа \'{new_status}\'.')
     homework_name = homework['homework_name']
     verdict = HOMEWORK_VERDICTS[new_status]
-    logging.debug('Функция parse_status успешно отработала.')
+    logger.debug('Функция parse_status успешно отработала.')
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
@@ -193,13 +199,17 @@ def main():
                     message=text
                 )
             else:
-                logging.debug('Обновлений домашней работы пока ещё нет.')
+                logger.debug('Обновлений домашней работы пока ещё нет.')
             timestamp = data_json['current_date']
         except Exception as error:
             new_message = f'Сбой в работе программы: {error}'
             if message != new_message:
-                logging.error(new_message)
+                send_message(
+                    bot=bot,
+                    message=new_message
+                )
                 message = new_message
+            logger.error(new_message)
         finally:
             time.sleep(RETRY_PERIOD)
 

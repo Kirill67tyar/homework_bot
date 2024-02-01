@@ -26,14 +26,3 @@ HOMEWORK_VERDICTS = {
     'reviewing': 'Работа взята на проверку ревьюером.',
     'rejected': 'Работа проверена: у ревьюера есть замечания.'
 }
-
-
-HANDLER = logging.StreamHandler(
-    stream=sys.stdout
-)
-
-formatter = logging.Formatter(
-    LOGGING_FORMAT
-)
-
-HANDLER.setFormatter(formatter)
